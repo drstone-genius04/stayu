@@ -21,7 +21,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },
-  "homepage": "https://allan.github.io/stayu",
+  "homepage": "https://drstone-genius04.github.io/stayu",
   "eslintConfig": {
     "extends": [
       "react-app",
