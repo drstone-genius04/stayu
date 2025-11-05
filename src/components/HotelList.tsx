@@ -1,10 +1,10 @@
 import React from 'react';
-import { Hotel } from '../types';
+import { MatchedHotel } from '../types';
 import HotelCard from './HotelCard';
 
 interface HotelListProps {
-  hotels: Hotel[];
-  onBook: (hotel: Hotel) => void;
+  hotels: MatchedHotel[];
+  onBook: (hotel: MatchedHotel) => void;
   loading?: boolean;
 }
 

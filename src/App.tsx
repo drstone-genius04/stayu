@@ -5,27 +5,100 @@ import SearchForm from './components/SearchForm';
 import HotelList from './components/HotelList';
 import BookingModal from './components/BookingModal';
 import ContactUs from './components/ContactUs';
-import { Hotel, SearchFilters } from './types';
+import { Hotel, SearchFilters, MatchedHotel } from './types';
 import { marylandHotels } from './data/hotels';
+import { matchUserWithHotels, convertFiltersToPreferences } from './services/matchingService';
 
 const App: React.FC = () => {
   const [hotels] = useState<Hotel[]>(marylandHotels);
-  const [filteredHotels, setFilteredHotels] = useState<Hotel[]>(marylandHotels);
+  const [filteredHotels, setFilteredHotels] = useState<MatchedHotel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [currentFilters, setCurrentFilters] = useState<SearchFilters | null>(null);
 
-    // Filter hotels based on search criteria
-  const filterHotels = (filters: SearchFilters, skipDelay = false) => {
+  // Filter hotels based on search criteria with optional smart matching
+  const filterHotels = async (filters: SearchFilters, skipDelay = false) => {
     if (!skipDelay) {
       setLoading(true);
     }
     
-    const performFilter = () => {
-      let filtered = hotels.filter(hotel => {
-        // Date filter - for now, just show all hotels regardless of date
-        // In a real app, this would check availability for the selected date
+    setCurrentFilters(filters);
 
+    const performFilter = async () => {
+      try {
+        let results: MatchedHotel[] = [];
+
+        // Always use intelligent matching algorithm when date/time are provided
+        if (filters.date && filters.checkIn && filters.checkOut) {
+          const userPrefs = convertFiltersToPreferences({
+            date: filters.date,
+            checkIn: filters.checkIn,
+            checkOut: filters.checkOut,
+            budgetMin: filters.priceRange[0],
+            budgetMax: filters.priceRange[1],
+            maxDistanceKm: filters.maxDistanceKm,
+            targetLocation: filters.targetLocation,
+          });
+
+          if (userPrefs) {
+            // Use intelligent matching algorithm
+            const matchedResults = matchUserWithHotels(userPrefs, hotels);
+            
+            // Convert matched results to MatchedHotel format
+            const mappedResults = matchedResults.map((match) => {
+              // Apply amenities filter
+              if (filters.amenities.length > 0) {
+                const hasRequiredAmenities = filters.amenities.every(amenity =>
+                  match.hotel.amenities.includes(amenity)
+                );
+                if (!hasRequiredAmenities) return null;
+              }
+
+              const matchedHotel: MatchedHotel = {
+                ...match.hotel,
+                matchedSlot: match.matchedSlot,
+                distanceKm: match.distanceKm,
+                timeShiftMinutes: match.timeShiftMinutes,
+                matchScore: match.matchScore,
+              };
+
+              return matchedHotel;
+            });
+
+            results = mappedResults.filter((hotel): hotel is MatchedHotel => hotel !== null);
+          } else {
+            // Fallback to traditional filtering if conversion fails
+            results = performTraditionalFilter(hotels, filters);
+          }
+        } else {
+          // Traditional filtering when no date/time provided
+          results = performTraditionalFilter(hotels, filters);
+        }
+
+        setFilteredHotels(results);
+      } catch (err) {
+        console.error('Error filtering hotels:', err);
+        setError('Error filtering hotels. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (skipDelay) {
+      await performFilter();
+    } else {
+      // Simulate API call delay
+      setTimeout(performFilter, 500);
+    }
+  };
+
+  // Traditional filtering method (fallback)
+  const performTraditionalFilter = (hotelList: Hotel[], filters: SearchFilters): MatchedHotel[] => {
+    return hotelList
+      .filter(hotel => {
         // Amenities filter
         if (filters.amenities.length > 0) {
           const hasRequiredAmenities = filters.amenities.every(amenity =>
@@ -34,36 +107,63 @@ const App: React.FC = () => {
           if (!hasRequiredAmenities) return false;
         }
 
-        // Price range filter
+        // Price range filter (check hourly rate)
         if (hotel.pricePerHour < filters.priceRange[0] || hotel.pricePerHour > filters.priceRange[1]) {
           return false;
         }
 
         return true;
-      });
+      })
+      .map(hotel => ({
+        ...hotel,
+        matchedSlot: undefined,
+        distanceKm: filters.targetLocation
+          ? calculateDistance(hotel.coordinates, filters.targetLocation)
+          : undefined,
+      }));
+  };
 
-      setFilteredHotels(filtered);
-      setLoading(false);
-    };
-
-    if (skipDelay) {
-      performFilter();
-    } else {
-      // Simulate API call delay
-      setTimeout(performFilter, 1000);
-    }
+  // Simple distance calculation helper
+  const calculateDistance = (
+    loc1: { lat: number; lng: number },
+    loc2: { lat: number; lng: number }
+  ): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = ((loc2.lat - loc1.lat) * Math.PI) / 180;
+    const dLng = ((loc2.lng - loc1.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((loc1.lat * Math.PI) / 180) *
+        Math.cos((loc2.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   // Handle hotel booking
-  const handleBookHotel = (hotel: Hotel) => {
-    setSelectedHotel(hotel);
+  const handleBookHotel = (hotel: MatchedHotel) => {
+    // If there's a matched slot, use it; otherwise use the hotel as-is
+    const hotelToBook: Hotel = hotel.matchedSlot
+      ? {
+          ...hotel,
+          availableTimeSlots: hotel.availableTimeSlots.map(slot => 
+            slot.id === hotel.matchedSlot!.originalSlotId
+              ? { ...slot, startTime: hotel.matchedSlot!.startTime, endTime: hotel.matchedSlot!.endTime }
+              : slot
+          )
+        }
+      : hotel;
+    
+    setSelectedHotel(hotelToBook);
     setIsBookingModalOpen(true);
   };
 
-  // Handle booking confirmation
+  // Handle booking confirmation (called after successful backend save)
   const handleConfirmBooking = (booking: { hotel: Hotel; timeSlot: any; guests: number }) => {
-    // In a real app, this would send data to a backend
+    // Show success message
     alert(`Booking confirmed for ${booking.hotel.name} from ${booking.timeSlot.startTime} to ${booking.timeSlot.endTime} for ${booking.guests} guest(s). Total: $${booking.timeSlot.price}`);
+
     setIsBookingModalOpen(false);
     setSelectedHotel(null);
   };
@@ -74,17 +174,22 @@ const App: React.FC = () => {
     setSelectedHotel(null);
   };
 
-  // Initial search on component mount
+  // Filter hotels when hotels data changes (initial load)
   useEffect(() => {
-    filterHotels({
-      date: '',
-      checkIn: '',
-      checkOut: '',
-      guests: 1,
-      priceRange: [0, 100],
-      amenities: []
-    }, true); // Skip delay for initial load
-  }, [filterHotels]);
+    if (hotels.length > 0) {
+      const initialFilters: SearchFilters = {
+        date: '',
+        checkIn: '',
+        checkOut: '',
+        guests: 1,
+        priceRange: [0, 500],
+        amenities: [],
+        targetLocation: { lat: 38.9907, lng: -76.9361 }
+      };
+      filterHotels(initialFilters, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -100,8 +205,8 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        {/* Results Section */}
-        <section className="py-12">
+                 {/* Results Section */}
+                 <section id="hotels" className="py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -111,6 +216,12 @@ const App: React.FC = () => {
                 Premium accommodations near University of Maryland • Book by the hour with no minimum stay
               </p>
             </div>
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
 
             <HotelList
               hotels={filteredHotels}
@@ -207,7 +318,7 @@ const App: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-gray-600">
-                      Theo served in the Air Force, flying drones for NASA missions. His aerospace background and technical expertise in cutting-edge technology 
+                      Theo served in the Army, flying drones for NASA missions. His aerospace background and technical expertise in cutting-edge technology 
                       brings unique perspective to solving complex problems in the hospitality and travel industry.
                     </p>
                   </div>
@@ -226,8 +337,10 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        {/* Contact Section */}
-        <ContactUs />
+                 {/* Contact Section */}
+                 <div id="contact">
+                   <ContactUs />
+                 </div>
       </main>
 
       {/* Footer */}

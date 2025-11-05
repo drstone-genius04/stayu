@@ -41,4 +41,22 @@ export interface SearchFilters {
   guests: number;
   priceRange: [number, number];
   amenities: string[];
+  // Enhanced matching parameters (always required)
+  targetLocation: {
+    lat: number;
+    lng: number;
+  };
+  maxDistanceKm?: number;
+}
+
+export interface MatchedHotel extends Hotel {
+  matchedSlot?: {
+    startTime: string;
+    endTime: string;
+    price: number;
+    originalSlotId: string;
+  };
+  distanceKm?: number;
+  timeShiftMinutes?: number;
+  matchScore?: number;
 }

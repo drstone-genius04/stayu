@@ -14,6 +14,7 @@ A modern React-based platform for booking hotels by the hour. This application f
 ## Tech Stack
 
 - **React 18** with TypeScript
+- **Supabase** for backend (PostgreSQL database, authentication, real-time)
 - **Tailwind CSS** for styling
 - **Modern ES6+** features
 - **Responsive Design** principles
@@ -24,6 +25,7 @@ A modern React-based platform for booking hotels by the hour. This application f
 
 - Node.js (v16 or higher)
 - npm or yarn
+- A Supabase account (free tier available)
 
 ### Installation
 
@@ -32,31 +34,50 @@ A modern React-based platform for booking hotels by the hour. This application f
 npm install
 ```
 
-2. Start the development server:
+2. Set up Supabase backend:
+   - See [SETUP.md](./SETUP.md) for detailed backend setup instructions
+   - Create a `.env` file with your Supabase credentials:
+     ```env
+     REACT_APP_SUPABASE_URL=your_supabase_project_url
+     REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+     ```
+
+3. Start the development server:
 ```bash
 npm start
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+4. Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
 ## Project Structure
 
 ```
 src/
 ├── components/          # React components
-│   ├── Header.tsx      # Navigation header
+│   ├── Header.tsx       # Navigation header
 │   ├── Hero.tsx        # Hero section
 │   ├── SearchForm.tsx  # Search and filter form
 │   ├── HotelCard.tsx   # Individual hotel card
 │   ├── HotelList.tsx   # Hotel listing component
-│   └── BookingModal.tsx # Booking confirmation modal
-├── data/               # Dummy data
+│   ├── BookingModal.tsx # Booking confirmation modal
+│   └── ContactUs.tsx    # Contact form component
+├── services/           # Backend service layer
+│   ├── hotelService.ts # Hotel data operations
+│   └── bookingService.ts # Booking operations
+├── lib/                # Library configurations
+│   ├── supabase.ts     # Supabase client setup
+│   └── database.types.ts # Database type definitions
+├── data/               # Static data (legacy, now using Supabase)
 │   └── hotels.ts       # Maryland hotel data
 ├── types/              # TypeScript type definitions
 │   └── index.ts        # Interface definitions
 ├── App.tsx             # Main application component
 ├── index.tsx           # Application entry point
 └── index.css           # Global styles and Tailwind imports
+
+supabase/
+└── migrations/         # Database migration files
+    └── 001_initial_schema.sql # Initial database schema
 ```
 
 ## Features Overview
@@ -77,9 +98,11 @@ src/
 
 ### Booking Flow
 - Time slot selection
+- Guest information collection (name, email, phone)
 - Guest count selection
 - Booking summary
-- Confirmation modal
+- Real-time booking confirmation (saved to Supabase)
+- Automatic availability updates
 
 ## Featured Hotel
 
@@ -91,10 +114,23 @@ The application features Hotel College Park Maryland with:
 - High-quality images
 - Excellent ratings and reviews
 
+## Backend Setup
+
+This application uses **Supabase** as the backend. See [SETUP.md](./SETUP.md) for complete setup instructions.
+
+### Key Features:
+- **PostgreSQL Database**: Relational database for hotels, time slots, and bookings
+- **Real-time Updates**: Automatic availability updates
+- **Row Level Security**: Secure data access policies
+- **Auto-generated APIs**: RESTful APIs generated automatically
+
 ## Customization
 
 ### Adding New Hotels
-Edit `src/data/hotels.ts` to add new hotels following the `Hotel` interface.
+You can add hotels through:
+1. **Supabase Dashboard**: Use the Table Editor to add hotels directly
+2. **SQL Scripts**: Run INSERT statements in the SQL Editor
+3. **Admin Interface**: (Future feature) Build an admin panel for hotel management
 
 ### Styling
 The application uses Tailwind CSS with custom color schemes. Modify `tailwind.config.js` to change the design system.

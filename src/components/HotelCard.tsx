@@ -1,9 +1,9 @@
 import React from 'react';
-import { Hotel } from '../types';
+import { MatchedHotel } from '../types';
 
 interface HotelCardProps {
-  hotel: Hotel;
-  onBook: (hotel: Hotel) => void;
+  hotel: MatchedHotel;
+  onBook: (hotel: MatchedHotel) => void;
 }
 
 const HotelCard: React.FC<HotelCardProps> = ({ hotel, onBook }) => {
@@ -29,10 +29,24 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onBook }) => {
           alt={hotel.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1">
-          <span className="text-sm font-semibold text-gray-900">
-            ${hotel.pricePerHour}/hour
-          </span>
+        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 flex flex-col gap-1">
+          {hotel.matchedSlot ? (
+            <>
+              <span className="text-sm font-bold text-primary-700">
+                ${hotel.matchedSlot.price.toFixed(2)}
+              </span>
+              <span className="text-xs text-gray-600">
+                ${hotel.pricePerHour}/hour
+              </span>
+              <div className="bg-primary-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                ⭐ BEST
+              </div>
+            </>
+          ) : (
+            <span className="text-sm font-semibold text-gray-900">
+              ${hotel.pricePerHour}/hour
+            </span>
+          )}
         </div>
       </div>
 
@@ -46,7 +60,55 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onBook }) => {
           </div>
         </div>
 
-        <p className="text-gray-600 text-sm mb-3">{hotel.address}, {hotel.city}, {hotel.state}</p>
+        <p className="text-gray-600 text-sm mb-2">{hotel.address}, {hotel.city}, {hotel.state}</p>
+        
+        {/* Best Match - Prominent CTA */}
+        {hotel.matchedSlot && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-primary-50 to-primary-100 border-2 border-primary-200 rounded-xl shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  ⭐ BEST MATCH
+                </div>
+                <div className="text-sm font-semibold text-primary-800">
+                  {hotel.matchedSlot.startTime} - {hotel.matchedSlot.endTime}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-lg font-bold text-primary-700">
+                  ${hotel.matchedSlot.price.toFixed(2)}
+                </div>
+                {hotel.timeShiftMinutes !== undefined && hotel.timeShiftMinutes > 0 && (
+                  <div className="text-xs text-primary-600">
+                    {hotel.timeShiftMinutes} min shift
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              {hotel.distanceKm !== undefined && (
+                <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <span className="text-lg">📍</span>
+                  <span>{hotel.distanceKm.toFixed(1)} km away</span>
+                </div>
+              )}
+
+              <button
+                onClick={() => onBook(hotel)}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors shadow-md hover:shadow-lg"
+              >
+                Book Now
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {hotel.distanceKm !== undefined && !hotel.matchedSlot && (
+          <div className="mb-2 text-xs text-gray-600">
+            📍 {hotel.distanceKm.toFixed(1)} km away
+          </div>
+        )}
         
         <p className="text-gray-700 text-sm mb-4 line-clamp-2">{hotel.description}</p>
 
@@ -80,18 +142,21 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onBook }) => {
                     : 'bg-red-100 text-red-700 border border-red-200'
                 }`}
               >
-                {slot.startTime} - {slot.endTime}
+                {slot.startTime} - {slot.endTime} (${slot.price.toFixed(0)})
               </span>
             ))}
           </div>
         </div>
 
-        {/* Book Button */}
+        {/* Book Button - Less prominent when Best Match exists */}
         <button
           onClick={() => onBook(hotel)}
-          className="btn-primary w-full"
+          className={`${hotel.matchedSlot
+            ? 'btn-secondary w-full opacity-75 hover:opacity-100'
+            : 'btn-primary w-full'
+          }`}
         >
-          Book Now
+          {hotel.matchedSlot ? 'View Other Times' : 'Book Now'}
         </button>
       </div>
     </div>
