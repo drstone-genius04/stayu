@@ -1,15 +1,85 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import SearchForm from './components/SearchForm';
 import HotelList from './components/HotelList';
 import BookingModal from './components/BookingModal';
 import ContactUs from './components/ContactUs';
+import Login from './components/Login';
+import MapPage from './components/MapPage';
 import { Hotel, SearchFilters, MatchedHotel } from './types';
 import { marylandHotels } from './data/hotels';
 import { matchUserWithHotels, convertFiltersToPreferences } from './services/matchingService';
 
+// Main App Component
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ email: string } | null>(null);
+
+  const handleLogin = (email: string, password: string) => {
+    // For MVP, accept any login
+    setUser({ email });
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/" replace />
+              ) : (
+                <Login
+                  onLogin={handleLogin}
+                  onSwitchToSignup={() => {/* For MVP, just show login */}}
+                />
+              )
+            }
+          />
+          <Route
+            path="/map"
+            element={
+              isAuthenticated ? (
+                <MapPage onBookHotel={(hotel) => {
+                  // Navigate to main page with selected hotel
+                  window.location.href = '/?hotel=' + encodeURIComponent(hotel.id);
+                }} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <HomePage
+                isAuthenticated={isAuthenticated}
+                user={user}
+                onLogout={handleLogout}
+              />
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
+  );
+};
+
+// Home Page Component
+const HomePage: React.FC<{
+  isAuthenticated: boolean;
+  user: { email: string } | null;
+  onLogout: () => void;
+}> = ({ isAuthenticated, user, onLogout }) => {
   const [hotels] = useState<Hotel[]>(marylandHotels);
   const [filteredHotels, setFilteredHotels] = useState<MatchedHotel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -193,7 +263,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header
+        isAuthenticated={isAuthenticated}
+        user={user}
+        onLogout={onLogout}
+      />
       
       <main>
         <Hero />
