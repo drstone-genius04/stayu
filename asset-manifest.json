@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/stayu/static/css/main.dd99396b.css",
+    "main.js": "/stayu/static/js/main.3e2ced85.js",
+    "index.html": "/stayu/index.html",
+    "main.dd99396b.css.map": "/stayu/static/css/main.dd99396b.css.map",
+    "main.3e2ced85.js.map": "/stayu/static/js/main.3e2ced85.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.dd99396b.css",
+    "static/js/main.3e2ced85.js"
+  ]
+}
