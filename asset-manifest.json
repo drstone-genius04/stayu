@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/stayu/static/css/main.dd99396b.css",
-    "main.js": "/stayu/static/js/main.afc865eb.js",
+    "main.js": "/stayu/static/js/main.c4e87e8d.js",
     "index.html": "/stayu/index.html",
     "main.dd99396b.css.map": "/stayu/static/css/main.dd99396b.css.map",
-    "main.afc865eb.js.map": "/stayu/static/js/main.afc865eb.js.map"
+    "main.c4e87e8d.js.map": "/stayu/static/js/main.c4e87e8d.js.map"
   },
   "entrypoints": [
     "static/css/main.dd99396b.css",
-    "static/js/main.afc865eb.js"
+    "static/js/main.c4e87e8d.js"
   ]
 }
